@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #F5F1E8; /* Marfil */
+    color: #1B2B38;
+  }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #087F8C;
+    outline-offset: 2px;
+  }
+}
+
+.leaflet-container { font-family: inherit; background-color: #EAE4D6; }
+.ga-marker, .terramina-marker-icon { background: transparent; border: none; }
+.leaflet-tooltip { font-size: 12px; border-radius: 6px; border-color: #DCE2E6; color: #1B2B38; }
+
+/* Impresión de informes: solo el documento. */
+@media print {
+  @page { size: A4; margin: 14mm; }
+  body { background: #fff; }
+  aside, header.sticky, .leaflet-control-container { display: none !important; }
+  .lg\:pl-64 { padding-left: 0 !important; }
+  main { padding: 0 !important; max-width: none !important; }
+}
