@@ -159,7 +159,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     g.rivers.clearLayers();
     if (layers.departments) {
       // Malla detallada de límites territoriales (geoBoundaries ADM3)
-      L.geoJSON(boliviaAdm3 as GeoJSON.GeoJsonObject, {
+      L.geoJSON(boliviaAdm3 as any, {
         style: {
           color: '#17364D',
           weight: 0.9,
