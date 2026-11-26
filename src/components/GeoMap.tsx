@@ -198,6 +198,20 @@ export const GeoMap: React.FC<GeoMapProps> = ({
             fillOpacity: 0.08,
             interactive: false
           }).addTo(g.departments);
+        }
+      }
+    }
+
+      if (highlightDepartment) {
+        const dept = DEPARTMENTS.find((d) => d.name === highlightDepartment);
+        if (dept) {
+          L.polygon(dept.polygon, {
+            color: '#17364D',
+            weight: 2.5,
+            fillColor: '#17364D',
+            fillOpacity: 0.08,
+            interactive: false
+          }).addTo(g.departments);
 
       // Resaltado cuando se selecciona un departamento específico en los filtros
       if (highlightDepartment) {
