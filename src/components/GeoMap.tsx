@@ -129,7 +129,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   const [adm3GeoJson, setAdm3GeoJson] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/bolivia_adm3_ligero.geojson')
+    fetch('/brand/bolivia_adm3_ligero.geojson')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) setAdm3GeoJson(data);
