@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { AreaGeometry, CitizenReport, MiningRecord, SatelliteObservation, SourceDocument, TerritorialAlert } from '../types/domain';
@@ -127,6 +127,18 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   onMapClickRef.current = onMapClick;
   const layers = { ...DEFAULT_LAYERS, ...layersProp };
 
+  const [adm3GeoJson, setAdm3GeoJson] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/bolivia_adm3_ligero.geojson')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setAdm3GeoJson(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { center: BOLIVIA_CENTER, zoom: BOLIVIA_ZOOM, minZoom: 4, maxZoom: 18, zoomControl: true, attributionControl: true });
@@ -158,22 +170,34 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     g.protectedAreas.clearLayers();
     g.rivers.clearLayers();
     if (layers.departments) {
-      // Malla detallada de límites territoriales (geoBoundaries ADM3)
-      L.geoJSON(boliviaAdm3 as any, {
-        style: {
-          color: '#17364D',
-          weight: 0.9,
-          opacity: 0.55,
-          fillColor: '#17364D',
-          fillOpacity: 0.02
-        },
-        onEachFeature: (feature, layer) => {
-          const name = feature.properties?.shapeName;
-          if (name) {
-            layer.bindTooltip(`Municipio: ${esc(String(name))}`, { sticky: true });
+      if (adm3GeoJson) {
+        L.geoJSON(adm3GeoJson, {
+          style: {
+            color: '#17364D',
+            weight: 0.9,
+            opacity: 0.55,
+            fillColor: '#17364D',
+            fillOpacity: 0.02
+          },
+          onEachFeature: (feature: any, layer: L.Layer) => {
+            const name = feature?.properties?.shapeName;
+            if (name) {
+              layer.bindTooltip(`Municipio: ${esc(String(name))}`, { sticky: true });
+            }
           }
-        }
-      }).addTo(g.departments);
+        }).addTo(g.departments);
+      }
+
+      if (highlightDepartment) {
+        const dept = DEPARTMENTS.find((d) => d.name === highlightDepartment);
+        if (dept) {
+          L.polygon(dept.polygon, {
+            color: '#17364D',
+            weight: 2.5,
+            fillColor: '#17364D',
+            fillOpacity: 0.08,
+            interactive: false
+          }).addTo(g.departments);
 
       // Resaltado cuando se selecciona un departamento específico en los filtros
       if (highlightDepartment) {
