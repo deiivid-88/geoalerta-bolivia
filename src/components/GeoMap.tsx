@@ -620,5 +620,14 @@ export const MapLegend: React.FC<{ compact?: boolean }> = ({ compact }) => (
     <div className="flex items-center gap-1.5">
       <span className="w-3 h-3 rounded-xs shrink-0 border" style={{ background: 'rgba(56,189,248,0.45)', borderColor: '#0284c7' }} /> Anomalía Radar SAR
     </div>
+    <div className="flex items-center gap-1.5">
+      <span className="w-3 h-3 rounded-xs shrink-0" style={{ background: 'linear-gradient(90deg, #fef08a, #f97316, #7f1d1d)' }} /> Riesgo ambiental Hg (piloto)
+    </div>
+    <div className="flex items-center gap-1.5">
+      <span className="w-3 h-3 rounded-xs shrink-0 border" style={{ background: 'rgba(168,85,247,0.65)', borderColor: '#7e22ce' }} /> Pasivos / colas en reposo
+    </div>
+    <div className="flex items-center gap-1.5">
+      <span className="w-3 h-3 rounded-xs shrink-0 border-2" style={{ background: 'rgba(0,255,255,0.18)', borderColor: '#00ffff' }} /> Top 15 cuadrantes ORO-4.2
+    </div>
   </div>
 );
