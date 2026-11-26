@@ -7,6 +7,15 @@ import { DATA_MODE } from '../services';
 import { DEMO_PASSWORD, SEED_USERS } from '../data/seed';
 import { ROLE } from '../domain/catalogs';
 
+const PRESENTATION_ACCOUNTS = [
+  { id: 'USR-ADMIN-01', role: 'administrador' as const, email: 'admin@geoalerta.bo' },
+  { id: 'USR-ANALISTA-01', role: 'analista_sig' as const, email: 'analista@geoalerta.bo' },
+  { id: 'USR-REVISOR-01', role: 'revisor_institucional' as const, email: 'revisor@geoalerta.bo' },
+  { id: 'USR-CONSULTA-01', role: 'consulta_institucional' as const, email: 'consulta@geoalerta.bo' },
+];
+
+const PRESENTATION_PASSWORD = 'GeoAlerta-admin-2026';
+
 export const LoginPage: React.FC = () => {
   const { login } = useSession();
   const [email, setEmail] = useState('');
@@ -26,6 +35,19 @@ export const LoginPage: React.FC = () => {
       setBusy(false);
     }
   };
+
+  const quickUsers =
+    DATA_MODE === 'demo'
+      ? SEED_USERS.filter((u) => u.active).map((u) => ({
+          id: u.id,
+          role: u.role,
+          email: u.email,
+          pass: DEMO_PASSWORD,
+        }))
+      : PRESENTATION_ACCOUNTS.map((u) => ({
+          ...u,
+          pass: PRESENTATION_PASSWORD,
+        }));
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-ivory-100">
@@ -71,29 +93,33 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
 
-          {DATA_MODE === 'demo' && (
-            <div className="rounded-md border border-dashed border-gold-400 bg-gold-50 p-3 text-xs text-gold-900 space-y-2">
-              <p>
-                <strong>Modo demostrativo.</strong> Los datos se guardan solo en este navegador. Contraseña de todas las cuentas de prueba:{' '}
-                <code className="bg-white px-1 rounded">{DEMO_PASSWORD}</code>
-              </p>
-              <div className="grid gap-1">
-                {SEED_USERS.filter((u) => u.active).map((u) => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => {
-                      setEmail(u.email);
-                      setPassword(DEMO_PASSWORD);
-                    }}
-                    className="text-left rounded px-2 py-1 bg-white/70 hover:bg-white border border-gold-200"
-                  >
-                    <strong>{ROLE[u.role].label}</strong> · {u.email}
-                  </button>
-                ))}
-              </div>
+          <div className="rounded-md border border-dashed border-gold-400 bg-gold-50 p-3 text-xs text-gold-900 space-y-2">
+            <p>
+              <strong>Acceso rápido de presentación.</strong>{' '}
+              {DATA_MODE === 'demo'
+                ? 'Modo demostrativo local.'
+                : 'Conectado a base de datos central.'}{' '}
+              Contraseña de todas las cuentas:{' '}
+              <code className="bg-white px-1 rounded">
+                {DATA_MODE === 'demo' ? DEMO_PASSWORD : PRESENTATION_PASSWORD}
+              </code>
+            </p>
+            <div className="grid gap-1">
+              {quickUsers.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => {
+                    setEmail(u.email);
+                    setPassword(u.pass);
+                  }}
+                  className="text-left rounded px-2 py-1 bg-white/70 hover:bg-white border border-gold-200"
+                >
+                  <strong>{ROLE[u.role].label}</strong> · {u.email}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           <div className="border-t border-ink-200 pt-4 space-y-2">
             <p className="text-xs font-semibold text-ink-600 uppercase tracking-wide">Acceso ciudadano (sin cuenta)</p>
