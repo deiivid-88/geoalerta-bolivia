@@ -3,7 +3,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { AreaGeometry, CitizenReport, MiningRecord, SatelliteObservation, SourceDocument, TerritorialAlert } from '../types/domain';
 import { BOLIVIA_CENTER, BOLIVIA_ZOOM, DEPARTMENTS, PROTECTED_AREAS_DEMO, RIVERS_DEMO } from '../data/boliviaGeo';
-import boliviaAdm3 from '../data/bolivia_adm3_ligero.geojson';
 import { ADMIN_STATUS, ALERT_PRIORITY, DATA_COLORS, MINING_TYPE, OBSERVATION_TYPE, REPORT_CATEGORY } from '../domain/catalogs';
 
 export type MapLayerKey = 'records' | 'polygons' | 'reports' | 'satellites' | 'alerts' | 'sourceDocs' | 'protectedAreas' | 'departments' | 'rivers';
@@ -138,7 +137,6 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       .catch(() => {});
   }, []);
 
-  
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { center: BOLIVIA_CENTER, zoom: BOLIVIA_ZOOM, minZoom: 4, maxZoom: 18, zoomControl: true, attributionControl: true });
@@ -201,32 +199,6 @@ export const GeoMap: React.FC<GeoMapProps> = ({
         }
       }
     }
-
-      if (highlightDepartment) {
-        const dept = DEPARTMENTS.find((d) => d.name === highlightDepartment);
-        if (dept) {
-          L.polygon(dept.polygon, {
-            color: '#17364D',
-            weight: 2.5,
-            fillColor: '#17364D',
-            fillOpacity: 0.08,
-            interactive: false
-          }).addTo(g.departments);
-
-      // Resaltado cuando se selecciona un departamento específico en los filtros
-      if (highlightDepartment) {
-        const dept = DEPARTMENTS.find((d) => d.name === highlightDepartment);
-        if (dept) {
-          L.polygon(dept.polygon, {
-            color: '#17364D',
-            weight: 2.5,
-            fillColor: '#17364D',
-            fillOpacity: 0.08,
-            interactive: false
-          }).addTo(g.departments);
-        }
-      }
-    }
     if (layers.protectedAreas) {
       PROTECTED_AREAS_DEMO.forEach((a) =>
         L.polygon(a.polygon, { color: '#087F8C', weight: 1.5, dashArray: '2 4', fillColor: '#087F8C', fillOpacity: 0.07 })
@@ -237,7 +209,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     if (layers.rivers) {
       RIVERS_DEMO.forEach((r) => L.polyline(r.coords, { color: '#23A9B6', weight: 2.5, opacity: 0.7 }).bindTooltip(esc(r.name), { sticky: true }).addTo(g.rivers));
     }
-  }, [layers.departments, layers.protectedAreas, layers.rivers, highlightDepartment]);
+  }, [layers.departments, layers.protectedAreas, layers.rivers, highlightDepartment, adm3GeoJson]);
 
   // Capas de datos
   useEffect(() => {
