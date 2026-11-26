@@ -5,7 +5,21 @@ import type { AreaGeometry, CitizenReport, MiningRecord, SatelliteObservation, S
 import { BOLIVIA_CENTER, BOLIVIA_ZOOM, DEPARTMENTS, PROTECTED_AREAS_DEMO, RIVERS_DEMO } from '../data/boliviaGeo';
 import { ADMIN_STATUS, ALERT_PRIORITY, DATA_COLORS, MINING_TYPE, OBSERVATION_TYPE, REPORT_CATEGORY } from '../domain/catalogs';
 
-export type MapLayerKey = 'records' | 'polygons' | 'reports' | 'satellites' | 'alerts' | 'sourceDocs' | 'protectedAreas' | 'departments' | 'rivers';
+export type MapLayerKey =
+  | 'records'
+  | 'polygons'
+  | 'reports'
+  | 'satellites'
+  | 'alerts'
+  | 'sourceDocs'
+  | 'protectedAreas'
+  | 'departments'
+  | 'rivers'
+  | 'desafio4Persistente'
+  | 'desafio4Nuevo'
+  | 'desafio4Sar'
+  | 'desafio4Prioridad';
+
 export type LayerVisibility = Record<MapLayerKey, boolean>;
 
 export const DEFAULT_LAYERS: LayerVisibility = {
@@ -17,7 +31,11 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   sourceDocs: false,
   protectedAreas: true,
   departments: true,
-  rivers: false
+  rivers: false,
+  desafio4Persistente: true,
+  desafio4Nuevo: true,
+  desafio4Sar: false,
+  desafio4Prioridad: false
 };
 
 export type MapSelection =
@@ -52,6 +70,33 @@ const TILE_ATTR = import.meta.env.VITE_TILE_ATTRIBUTION || '&copy; OpenStreetMap
 const BOLIVIA_BOUNDS = L.latLngBounds([-22.9, -69.65], [-9.68, -57.45]);
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+function getColorPrioridad(valor: number): string {
+  if (valor >= 75) return '#7f1d1d';
+  if (valor >= 55) return '#dc2626';
+  if (valor >= 35) return '#f97316';
+  return '#fef08a';
+}
+
+function desafio4Tooltip(p: Record<string, any>): string {
+  const tipoLabels: Record<string, string> = {
+    foco_persistente: 'Foco persistente (2022–2026)',
+    expansion_nueva: 'Expansión nueva (2022→2026)',
+    sar_anomalia: 'Anomalía Radar SAR'
+  };
+  const tipo = tipoLabels[String(p.tipo_capa)] ?? String(p.tipo_capa ?? 'Zona evaluada');
+  return `
+    <div style="font-size:12px; line-height:1.4;">
+      <strong>Desafío 04 (ORO-4.2)</strong><br/>
+      <b>Tipo:</b> ${esc(tipo)}<br/>
+      <b>Prioridad Total:</b> ${esc(String(p.prioridad_total ?? 0))} / 100<br/>
+      <b>Riesgo:</b> ${esc(String(p.riesgo_indice ?? 0))} · <b>Valor:</b> ${esc(String(p.valor_indice ?? 0))}<br/>
+      <b>Persistente:</b> ${esc(String(p.ha_persistente ?? 0))} ha · <b>Nuevo:</b> ${esc(String(p.ha_nuevo ?? 0))} ha<br/>
+      <b>Pasivo:</b> ${esc(String(p.ha_pasivo ?? 0))} ha · <b>NDTI:</b> ${esc(String(p.ndti_turbidez ?? 0))}<br/>
+      <b>Píxeles SAR:</b> ${esc(String(p.pixeles_sar ?? 0))}
+    </div>
+  `;
+}
 
 /** Formas distintas por tipo de entidad, para que la identidad no dependa solo del color. */
 function recordIcon(r: MiningRecord, selected: boolean) {
@@ -127,12 +172,20 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   const layers = { ...DEFAULT_LAYERS, ...layersProp };
 
   const [adm3GeoJson, setAdm3GeoJson] = useState<any>(null);
+  const [desafio4GeoJson, setDesafio4GeoJson] = useState<any>(null);
 
   useEffect(() => {
     fetch('/brand/bolivia_adm3_ligero.geojson')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) setAdm3GeoJson(data);
+      })
+      .catch(() => {});
+
+    fetch('/brand/desafio4_bolivia_zonas.geojson')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setDesafio4GeoJson(data);
       })
       .catch(() => {});
   }, []);
@@ -144,7 +197,22 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     // Encuadre inicial: territorio boliviano completo.
     map.fitBounds(BOLIVIA_BOUNDS, { padding: [8, 8] });
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
-    ['departments', 'rivers', 'protectedAreas', 'polygons', 'sourceDocs', 'reports', 'satellites', 'records', 'alerts', 'pin'].forEach((k) => {
+    [
+      'departments',
+      'rivers',
+      'protectedAreas',
+      'desafio4Prioridad',
+      'desafio4Persistente',
+      'desafio4Nuevo',
+      'desafio4Sar',
+      'polygons',
+      'sourceDocs',
+      'reports',
+      'satellites',
+      'records',
+      'alerts',
+      'pin'
+    ].forEach((k) => {
       groups.current[k] = L.layerGroup().addTo(map);
     });
     map.on('click', (e: L.LeafletMouseEvent) => onMapClickRef.current?.(e.latlng.lat, e.latlng.lng));
@@ -210,6 +278,73 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       RIVERS_DEMO.forEach((r) => L.polyline(r.coords, { color: '#23A9B6', weight: 2.5, opacity: 0.7 }).bindTooltip(esc(r.name), { sticky: true }).addTo(g.rivers));
     }
   }, [layers.departments, layers.protectedAreas, layers.rivers, highlightDepartment, adm3GeoJson]);
+
+  // Capas Desafío 04 (GEE precalculado a escala nacional)
+  useEffect(() => {
+    const g = groups.current;
+    if (!mapRef.current || !g.desafio4Persistente) return;
+    g.desafio4Persistente.clearLayers();
+    g.desafio4Nuevo.clearLayers();
+    g.desafio4Sar.clearLayers();
+    g.desafio4Prioridad.clearLayers();
+
+    if (!desafio4GeoJson?.features) return;
+    const features = desafio4GeoJson.features as any[];
+
+    if (layers.desafio4Persistente) {
+      L.geoJSON(
+        { ...desafio4GeoJson, features: features.filter((f) => f.properties?.tipo_capa === 'foco_persistente') } as any,
+        {
+          style: { color: '#d97706', fillColor: '#f59e0b', weight: 1.5, fillOpacity: 0.45 },
+          onEachFeature: (feature: any, layer: L.Layer) => {
+            layer.bindTooltip(desafio4Tooltip(feature?.properties || {}), { sticky: true });
+          }
+        }
+      ).addTo(g.desafio4Persistente);
+    }
+
+    if (layers.desafio4Nuevo) {
+      L.geoJSON(
+        { ...desafio4GeoJson, features: features.filter((f) => f.properties?.tipo_capa === 'expansion_nueva') } as any,
+        {
+          style: { color: '#b91c1c', fillColor: '#ef4444', weight: 1.5, fillOpacity: 0.45 },
+          onEachFeature: (feature: any, layer: L.Layer) => {
+            layer.bindTooltip(desafio4Tooltip(feature?.properties || {}), { sticky: true });
+          }
+        }
+      ).addTo(g.desafio4Nuevo);
+    }
+
+    if (layers.desafio4Sar) {
+      L.geoJSON(
+        { ...desafio4GeoJson, features: features.filter((f) => f.properties?.tipo_capa === 'sar_anomalia') } as any,
+        {
+          style: { color: '#0284c7', fillColor: '#38bdf8', weight: 1.5, fillOpacity: 0.45 },
+          onEachFeature: (feature: any, layer: L.Layer) => {
+            layer.bindTooltip(desafio4Tooltip(feature?.properties || {}), { sticky: true });
+          }
+        }
+      ).addTo(g.desafio4Sar);
+    }
+
+    if (layers.desafio4Prioridad) {
+      L.geoJSON(desafio4GeoJson as any, {
+        style: (feature: any) => {
+          const col = getColorPrioridad(Number(feature?.properties?.prioridad_total ?? 0));
+          return { color: col, fillColor: col, weight: 1, fillOpacity: 0.5 };
+        },
+        onEachFeature: (feature: any, layer: L.Layer) => {
+          layer.bindTooltip(desafio4Tooltip(feature?.properties || {}), { sticky: true });
+        }
+      }).addTo(g.desafio4Prioridad);
+    }
+  }, [
+    desafio4GeoJson,
+    layers.desafio4Persistente,
+    layers.desafio4Nuevo,
+    layers.desafio4Sar,
+    layers.desafio4Prioridad
+  ]);
 
   // Capas de datos
   useEffect(() => {
@@ -317,6 +452,15 @@ export const MapLegend: React.FC<{ compact?: boolean }> = ({ compact }) => (
         <path d="M12 2 L23 21 H1 Z" fill="#C94C4C" />
       </svg>
       Alerta territorial
+    </div>
+    <div className="flex items-center gap-1.5">
+      <span className="w-3 h-3 rounded-xs shrink-0 border" style={{ background: 'rgba(245,158,11,0.45)', borderColor: '#d97706' }} /> Foco persistente (2022–2026)
+    </div>
+    <div className="flex items-center gap-1.5">
+      <span className="w-3 h-3 rounded-xs shrink-0 border" style={{ background: 'rgba(239,68,68,0.45)', borderColor: '#b91c1c' }} /> Expansión nueva (2022→2026)
+    </div>
+    <div className="flex items-center gap-1.5">
+      <span className="w-3 h-3 rounded-xs shrink-0 border" style={{ background: 'rgba(56,189,248,0.45)', borderColor: '#0284c7' }} /> Anomalía Radar SAR
     </div>
   </div>
 );
