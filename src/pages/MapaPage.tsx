@@ -45,7 +45,10 @@ const LAYER_LABELS: Record<MapLayerKey, string> = {
   pilotoS2_2022: 'Piloto Tipuani–Mapiri: Sentinel-2 (2022)',
   pilotoS2_2026: 'Piloto Tipuani–Mapiri: Sentinel-2 (2026)',
   pilotoNdti: 'Piloto Tipuani–Mapiri: Turbidez NDTI (2026)',
-  pilotoSar: 'Piloto Tipuani–Mapiri: Radar Sentinel-1 VV'
+  pilotoSar: 'Piloto Tipuani–Mapiri: Radar Sentinel-1 VV',
+  pilotoRiesgoHg: 'Piloto: Mapa de riesgo Hg (0–100)',
+  pilotoPasivos: 'Piloto: Pasivos / colas en reposo',
+  pilotoTop15: 'Piloto: Top 15 cuadrantes y GPS (ORO-4.2)'
 };
 
 export const MapaPage: React.FC = () => {
