@@ -22,7 +22,10 @@ export type MapLayerKey =
   | 'pilotoS2_2022'
   | 'pilotoS2_2026'
   | 'pilotoNdti'
-  | 'pilotoSar';
+  | 'pilotoSar'
+  | 'pilotoRiesgoHg'
+  | 'pilotoPasivos'
+  | 'pilotoTop15';
 
 export type LayerVisibility = Record<MapLayerKey, boolean>;
 
@@ -43,7 +46,10 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   pilotoS2_2022: false,
   pilotoS2_2026: true,
   pilotoNdti: true,
-  pilotoSar: false
+  pilotoSar: false,
+  pilotoRiesgoHg: false,
+  pilotoPasivos: false,
+  pilotoTop15: true
 };
 
 export type MapSelection =
@@ -108,6 +114,32 @@ function desafio4Tooltip(p: Record<string, any>): string {
     </div>
   `;
 }
+
+
+
+function top15Tooltip(p: Record<string, any>): string {
+  const catLabels: Record<string, string> = {
+    CRITICO_REPROCESABLE: 'Crítico / Reprocesable',
+    ALTO_RIESGO_CONTENCION: 'Alto riesgo (Contención)',
+    OPORTUNIDAD_REPROCESO: 'Oportunidad de reproceso',
+    MONITOREO: 'Monitoreo'
+  };
+  const cat = catLabels[String(p.categoria)] ?? String(p.categoria ?? 'Sitio prioritario');
+  const vol = Number(p.vol_colas_m3 ?? 0).toLocaleString('es-BO');
+  const lat = Number(p.lat ?? 0).toFixed(5);
+  const lon = Number(p.lon ?? 0).toFixed(5);
+  return `
+    <div style="font-size:12px; line-height:1.4;">
+      <strong>Top 15 ORO-4.2 · ${esc(cat)}</strong><br/>
+      <b>Prioridad:</b> ${esc(String(p.prioridad_total ?? 0))}/100 (Riesgo ${esc(String(p.riesgo_indice ?? 0))} · Valor ${esc(String(p.valor_indice ?? 0))})<br/>
+      <b>Vol. estimado de colas:</b> ${esc(vol)} m&sup3;<br/>
+      <b>Persistente:</b> ${esc(String(p.ha_persistente ?? 0))} ha · <b>Nuevo:</b> ${esc(String(p.ha_nuevo ?? 0))} ha · <b>Pasivo:</b> ${esc(String(p.ha_pasivo ?? 0))} ha<br/>
+      <b>NDTI:</b> ${esc(String(p.ndti_turbidez ?? 0))} · <b>Píxeles SAR:</b> ${esc(String(p.pixeles_sar ?? 0))}<br/>
+      <b>GPS:</b> ${esc(lat)}, ${esc(lon)}
+    </div>
+  `;
+}
+
 
 /** Formas distintas por tipo de entidad, para que la identidad no dependa solo del color. */
 function recordIcon(r: MiningRecord, selected: boolean) {
@@ -184,6 +216,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
 
   const [adm3GeoJson, setAdm3GeoJson] = useState<any>(null);
   const [desafio4GeoJson, setDesafio4GeoJson] = useState<any>(null);
+  const [top15GeoJson, setTop15GeoJson] = useState<any>(null);
 
   useEffect(() => {
     fetch('/brand/bolivia_adm3_ligero.geojson')
@@ -197,6 +230,13 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) setDesafio4GeoJson(data);
+      })
+      .catch(() => {});
+
+    fetch('/brand/piloto/top15_cuadrantes.geojson')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setTop15GeoJson(data);
       })
       .catch(() => {});
   }, []);
@@ -216,7 +256,14 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       'pilotoS2_2026',
       'pilotoNdti',
       'pilotoSar',
+      'pilotoS2_2022',
+      'pilotoS2_2026',
+      'pilotoNdti',
+      'pilotoSar',
+      'pilotoRiesgoHg',
+      'pilotoPasivos',
       'pilotoBorde',
+      'pilotoTop15',
       'desafio4Prioridad',
       'desafio4Persistente',
       'desafio4Nuevo',
@@ -297,12 +344,19 @@ export const GeoMap: React.FC<GeoMapProps> = ({
 
 
   // Capas ráster Zona Piloto: Confluencia Tipuani - Mapiri - Kaka
+// Capas ráster Zona Piloto: Confluencia Tipuani - Mapiri - Kaka
   useEffect(() => {
     const g = groups.current;
     if (!mapRef.current || !g.pilotoS2_2022) return;
-    ['pilotoS2_2022', 'pilotoS2_2026', 'pilotoNdti', 'pilotoSar', 'pilotoBorde'].forEach((k) =>
-      g[k].clearLayers()
-    );
+    [
+      'pilotoS2_2022',
+      'pilotoS2_2026',
+      'pilotoNdti',
+      'pilotoSar',
+      'pilotoRiesgoHg',
+      'pilotoPasivos',
+      'pilotoBorde'
+    ].forEach((k) => g[k]?.clearLayers());
 
     if (layers.pilotoS2_2022) {
       L.imageOverlay('/brand/piloto/s2_2022.png', PILOTO_BOUNDS, { opacity: 0.95 }).addTo(g.pilotoS2_2022);
@@ -316,8 +370,21 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     if (layers.pilotoSar) {
       L.imageOverlay('/brand/piloto/s1_vv_2026.png', PILOTO_BOUNDS, { opacity: 0.95 }).addTo(g.pilotoSar);
     }
+    if (layers.pilotoRiesgoHg) {
+      L.imageOverlay('/brand/piloto/riesgo_hg_2026.png', PILOTO_BOUNDS, { opacity: 0.85 }).addTo(g.pilotoRiesgoHg);
+    }
+    if (layers.pilotoPasivos) {
+      L.imageOverlay('/brand/piloto/pasivos_2026.png', PILOTO_BOUNDS, { opacity: 0.9 }).addTo(g.pilotoPasivos);
+    }
 
-    if (layers.pilotoS2_2022 || layers.pilotoS2_2026 || layers.pilotoNdti || layers.pilotoSar) {
+    if (
+      layers.pilotoS2_2022 ||
+      layers.pilotoS2_2026 ||
+      layers.pilotoNdti ||
+      layers.pilotoSar ||
+      layers.pilotoRiesgoHg ||
+      layers.pilotoPasivos
+    ) {
       L.rectangle(PILOTO_BOUNDS, {
         color: '#facc15',
         weight: 2,
@@ -327,7 +394,45 @@ export const GeoMap: React.FC<GeoMapProps> = ({
         .bindTooltip('Zona Piloto: Confluencia Tipuani – Mapiri – Kaka')
         .addTo(g.pilotoBorde);
     }
-  }, [layers.pilotoS2_2022, layers.pilotoS2_2026, layers.pilotoNdti, layers.pilotoSar]);
+  }, [
+    layers.pilotoS2_2022,
+    layers.pilotoS2_2026,
+    layers.pilotoNdti,
+    layers.pilotoSar,
+    layers.pilotoRiesgoHg,
+    layers.pilotoPasivos
+  ]);
+
+  // Top 15 cuadrantes prioritarios ORO-4.2 y puntos GPS (Zona Piloto)
+  useEffect(() => {
+    const g = groups.current;
+    if (!mapRef.current || !g.pilotoTop15) return;
+    g.pilotoTop15.clearLayers();
+    if (!layers.pilotoTop15 || !top15GeoJson?.features) return;
+
+    L.geoJSON(top15GeoJson as any, {
+      style: { color: '#00ffff', fillColor: '#00ffff', weight: 2, fillOpacity: 0.14 },
+      onEachFeature: (feature: any, layer: L.Layer) => {
+        const props = feature?.properties || {};
+        const tip = top15Tooltip(props);
+        layer.bindTooltip(tip, { sticky: true });
+
+        const lat = Number(props.lat);
+        const lon = Number(props.lon);
+        if (Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0 && lon !== 0) {
+          L.circleMarker([lat, lon], {
+            radius: 4.5,
+            color: '#0f172a',
+            weight: 1.5,
+            fillColor: '#ffffff',
+            fillOpacity: 1
+          })
+            .bindTooltip(tip, { sticky: true })
+            .addTo(g.pilotoTop15);
+        }
+      }
+    }).addTo(g.pilotoTop15);
+  }, [top15GeoJson, layers.pilotoTop15]);
 
   // Capas Desafío 04 (GEE precalculado a escala nacional)
 
