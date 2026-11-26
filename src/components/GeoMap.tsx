@@ -80,6 +80,8 @@ export interface GeoMapProps {
 
 const TILE_URL = import.meta.env.VITE_TILE_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTR = import.meta.env.VITE_TILE_ATTRIBUTION || '&copy; OpenStreetMap contributors';
+const SAT_TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const SAT_TILE_ATTR = 'Tiles &copy; Esri &mdash; Esri, Maxar, Earthstar Geographics';
 
 const BOLIVIA_BOUNDS = L.latLngBounds([-22.9, -69.65], [-9.68, -57.45]);
 const PILOTO_BOUNDS: L.LatLngBoundsExpression = [
@@ -208,6 +210,8 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const groups = useRef<Record<string, L.LayerGroup>>({});
+  const baseLayerRef = useRef<L.TileLayer | null>(null);
+  const [basemap, setBasemap] = useState<'mapa' | 'satelite'>('mapa');
   const onSelectRef = useRef(onSelect);
   const onMapClickRef = useRef(onMapClick);
   onSelectRef.current = onSelect;
@@ -244,7 +248,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { center: BOLIVIA_CENTER, zoom: BOLIVIA_ZOOM, minZoom: 4, maxZoom: 18, zoomControl: true, attributionControl: true });
-    L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 19 }).addTo(map);
+    baseLayerRef.current = null;
     // Encuadre inicial: territorio boliviano completo.
     map.fitBounds(BOLIVIA_BOUNDS, { padding: [8, 8] });
    L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
@@ -290,6 +294,20 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       groups.current = {};
     };
   }, []);
+
+  // Alternar mapa base (Callejero / Satélite) manteniendo siempre las capas encima
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (baseLayerRef.current) map.removeLayer(baseLayerRef.current);
+    const nextLayer =
+      basemap === 'satelite'
+        ? L.tileLayer(SAT_TILE_URL, { attribution: SAT_TILE_ATTR, maxNativeZoom: 17, maxZoom: 19 })
+        : L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 19 });
+    nextLayer.addTo(map);
+    nextLayer.bringToBack();
+    baseLayerRef.current = nextLayer;
+  }, [basemap]);
 
   // Capas de referencia
   useEffect(() => {
@@ -584,7 +602,35 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitToData, records.length]);
 
-  return <div ref={containerRef} className={`w-full z-0 ${className}`} role="region" aria-label={ariaLabel} />;
+  return (
+    <div className={`relative w-full ${className}`}>
+      <div ref={containerRef} className="w-full h-full z-0" role="region" aria-label={ariaLabel} />
+      <div
+        className="absolute top-16 right-3 sm:top-3 z-[850] inline-flex rounded-md border border-ink-200 bg-white/95 p-0.5 shadow-pop text-xs font-semibold"
+        role="group"
+        aria-label="Tipo de mapa base"
+      >
+        <button
+          type="button"
+          onClick={() => setBasemap('mapa')}
+          className={`px-2.5 py-1 rounded transition-colors ${
+            basemap === 'mapa' ? 'bg-navy-900 text-white' : 'text-ink-700 hover:bg-ink-100'
+          }`}
+        >
+          Mapa
+        </button>
+        <button
+          type="button"
+          onClick={() => setBasemap('satelite')}
+          className={`px-2.5 py-1 rounded transition-colors ${
+            basemap === 'satelite' ? 'bg-navy-900 text-white' : 'text-ink-700 hover:bg-ink-100'
+          }`}
+        >
+          Satélite
+        </button>
+      </div>
+    </div>
+  );
 };
 
 /** Leyenda del mapa: cada símbolo con su forma y etiqueta. */
