@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Compass, Crosshair, ExternalLink, Filter, Layers, Search, X } from 'lucide-react';
+import { Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Search, X } from 'lucide-react';
 import type { AdminStatus, MiningType, VerificationState } from '../types/domain';
 import { useData } from '../app/data';
 import { navigate, useRoute } from '../app/router';
@@ -28,6 +28,8 @@ import { filterMiningRecords, normalizeText } from '../domain/query';
 import { formatCoord, formatDate } from '../domain/util';
 import { isInsideBolivia, parseCoordinateQuery } from '../domain/validation';
 
+const PILOTO_VIEW = { lat: -15.47, lng: -67.8, zoom: 12 };
+
 const LAYER_LABELS: Record<MapLayerKey, string> = {
   records: 'Registros mineros (puntos)',
   polygons: 'Áreas de operación (polígonos)',
@@ -42,14 +44,42 @@ const LAYER_LABELS: Record<MapLayerKey, string> = {
   desafio4Nuevo: 'Expansión nueva (2022–2026)',
   desafio4Sar: 'Anomalías Radar SAR (sin nubes)',
   desafio4Prioridad: 'Índice de prioridad ORO-4.2 (0–100)',
-  pilotoS2_2022: 'Piloto Tipuani–Mapiri: Sentinel-2 (2022)',
-  pilotoS2_2026: 'Piloto Tipuani–Mapiri: Sentinel-2 (2026)',
-  pilotoNdti: 'Piloto Tipuani–Mapiri: Turbidez NDTI (2026)',
-  pilotoSar: 'Piloto Tipuani–Mapiri: Radar Sentinel-1 VV',
-  pilotoRiesgoHg: 'Piloto: Mapa de riesgo Hg (0–100)',
-  pilotoPasivos: 'Piloto: Pasivos / colas en reposo',
-  pilotoTop15: 'Piloto: Top 15 cuadrantes y GPS (ORO-4.2)'
+  pilotoS2_2022: 'Sentinel-2 Óptico (2022)',
+  pilotoS2_2026: 'Sentinel-2 Óptico (2026)',
+  pilotoNdti: 'Turbidez en río · NDTI (2026)',
+  pilotoSar: 'Radar Sentinel-1 VV (sin nubes)',
+  pilotoRiesgoHg: 'Mapa de riesgo Hg (0–100)',
+  pilotoPasivos: 'Pasivos / colas en reposo',
+  pilotoTop15: 'Top 15 cuadrantes y GPS (ORO-4.2)'
 };
+
+const PILOTO_KEYS: MapLayerKey[] = [
+  'pilotoS2_2022',
+  'pilotoS2_2026',
+  'pilotoNdti',
+  'pilotoSar',
+  'pilotoRiesgoHg',
+  'pilotoPasivos',
+  'pilotoTop15'
+];
+
+const LAYER_GROUPS: { id: 'base' | 'nacional' | 'piloto'; title: string; keys: MapLayerKey[] }[] = [
+  {
+    id: 'base',
+    title: 'Gestión territorial y referencia',
+    keys: ['records', 'polygons', 'reports', 'satellites', 'alerts', 'sourceDocs', 'protectedAreas', 'departments', 'rivers']
+  },
+  {
+    id: 'nacional',
+    title: 'Motor Nacional ORO-4.2 (Bolivia)',
+    keys: ['desafio4Persistente', 'desafio4Nuevo', 'desafio4Sar', 'desafio4Prioridad']
+  },
+  {
+    id: 'piloto',
+    title: 'Zona Piloto · Tipuani–Mapiri–Kaka',
+    keys: PILOTO_KEYS
+  }
+];
 
 export const MapaPage: React.FC = () => {
   const route = useRoute();
@@ -133,6 +163,15 @@ export const MapaPage: React.FC = () => {
     if (r.sel.id) setSelected(r.sel);
   };
 
+  const goToPiloto = () => {
+    setLayers((prev) => {
+      const anyPilotoOn = PILOTO_KEYS.some((k) => prev[k]);
+      return anyPilotoOn ? prev : { ...prev, pilotoS2_2026: true, pilotoNdti: true, pilotoTop15: true };
+    });
+    setFocus({ ...PILOTO_VIEW, key: `piloto-${Date.now()}` });
+    setPanelOpen(false);
+  };
+
   const resetAll = () => {
     setDepartment('');
     setProvince('');
@@ -145,6 +184,16 @@ export const MapaPage: React.FC = () => {
     setPin(null);
     setSelected(null);
     setFocus({ lat: BOLIVIA_CENTER[0], lng: BOLIVIA_CENTER[1], zoom: BOLIVIA_ZOOM, key: `reset-${Date.now()}` });
+  };
+
+  const layerCount = (k: MapLayerKey): number | string => {
+    if (k === 'records') return filteredRecords.length;
+    if (k === 'reports') return filteredReports.length;
+    if (k === 'satellites') return filteredSats.length;
+    if (k === 'alerts') return filteredAlerts.length;
+    if (k === 'polygons') return filteredRecords.filter((r) => r.geometry).length;
+    if (k === 'pilotoTop15') return 15;
+    return '';
   };
 
   const nearPin = pin ? filteredRecords.filter((r) => Math.hypot(r.lat - pin.lat, r.lng - pin.lng) < 0.1).length : 0;
@@ -242,22 +291,52 @@ export const MapaPage: React.FC = () => {
               </div>
             </section>
 
-            <section className="space-y-1.5">
+            <section className="space-y-3">
               <h2 className="text-[11px] font-bold uppercase tracking-wide text-ink-500 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5" /> Capas
               </h2>
-              {(Object.keys(LAYER_LABELS) as MapLayerKey[]).map((k) => (
-                <label key={k} className="flex items-center gap-2 text-xs text-ink-800 cursor-pointer py-0.5">
-                  <input type="checkbox" className="accent-teal-700 w-4 h-4" checked={layers[k]} onChange={() => setLayers((l) => ({ ...l, [k]: !l[k] }))} />
-                  <span className="flex-1">{LAYER_LABELS[k]}</span>
-                  <span className="tabular-nums text-ink-500">
-                    {k === 'records' ? filteredRecords.length : k === 'reports' ? filteredReports.length : k === 'satellites' ? filteredSats.length : k === 'alerts' ? filteredAlerts.length : k === 'polygons' ? filteredRecords.filter((r) => r.geometry).length : ''}
-                  </span>
-                </label>
+              {LAYER_GROUPS.map((group) => (
+                <div
+                  key={group.id}
+                  className={cx(
+                    'space-y-1',
+                    group.id !== 'base' && 'pt-2.5 border-t border-ink-200'
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2 pb-0.5">
+                    <h3 className="text-[10px] font-bold uppercase tracking-wide text-teal-800">{group.title}</h3>
+                    {group.id === 'piloto' && (
+                      <button
+                        type="button"
+                        onClick={goToPiloto}
+                        className="text-[10px] font-semibold text-teal-800 hover:underline flex items-center gap-0.5"
+                      >
+                        <MapPin className="w-3 h-3" /> Acercar
+                      </button>
+                    )}
+                  </div>
+                  {group.keys.map((k) => (
+                    <label key={k} className="flex items-center gap-2 text-xs text-ink-800 cursor-pointer py-0.5">
+                      <input type="checkbox" className="accent-teal-700 w-4 h-4" checked={layers[k]} onChange={() => setLayers((l) => ({ ...l, [k]: !l[k] }))} />
+                      <span className="flex-1">{LAYER_LABELS[k]}</span>
+                      <span className="tabular-nums text-ink-500">{layerCount(k)}</span>
+                    </label>
+                  ))}
+                  {group.id === 'piloto' && (
+                    <a
+                      href="/brand/piloto/top15_sitios.csv"
+                      download="top15_sitios_oro42.csv"
+                      className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-ink-200 bg-ivory-50 px-2.5 py-1.5 text-xs font-semibold text-navy-900 hover:bg-teal-50 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5 text-teal-800" />
+                      Descargar Top 15 GPS (.csv)
+                    </a>
+                  )}
+                </div>
               ))}
             </section>
 
-            <section className="space-y-1.5">
+            <section className="space-y-1.5 pt-2 border-t border-ink-200">
               <h2 className="text-[11px] font-bold uppercase tracking-wide text-ink-500">Simbología</h2>
               <MapLegend />
               <p className="text-[10px] text-ink-500 leading-relaxed pt-1">
@@ -322,12 +401,15 @@ export const MapaPage: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="absolute bottom-6 left-3 z-[900] flex gap-2">
+          <div className="absolute bottom-6 left-3 z-[900] flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" className="shadow-pop lg:hidden" icon={<Filter className="w-3.5 h-3.5" />} onClick={() => setPanelOpen(true)}>
               Filtros y capas
             </Button>
             <Button size="sm" variant="primary" className="shadow-pop" icon={<Compass className="w-3.5 h-3.5" />} onClick={() => setFocus({ lat: BOLIVIA_CENTER[0], lng: BOLIVIA_CENTER[1], zoom: BOLIVIA_ZOOM, key: `bo-${Date.now()}` })}>
               Vista de Bolivia
+            </Button>
+            <Button size="sm" variant="secondary" className="shadow-pop" icon={<MapPin className="w-3.5 h-3.5" />} onClick={goToPiloto}>
+              Zona Piloto: Tipuani–Mapiri
             </Button>
           </div>
 
