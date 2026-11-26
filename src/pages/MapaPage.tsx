@@ -41,7 +41,11 @@ const LAYER_LABELS: Record<MapLayerKey, string> = {
   desafio4Persistente: 'Focos persistentes (2022–2026)',
   desafio4Nuevo: 'Expansión nueva (2022–2026)',
   desafio4Sar: 'Anomalías Radar SAR (sin nubes)',
-  desafio4Prioridad: 'Índice de prioridad ORO-4.2 (0–100)'
+  desafio4Prioridad: 'Índice de prioridad ORO-4.2 (0–100)',
+  pilotoS2_2022: 'Piloto Tipuani–Mapiri: Sentinel-2 (2022)',
+  pilotoS2_2026: 'Piloto Tipuani–Mapiri: Sentinel-2 (2026)',
+  pilotoNdti: 'Piloto Tipuani–Mapiri: Turbidez NDTI (2026)',
+  pilotoSar: 'Piloto Tipuani–Mapiri: Radar Sentinel-1 VV'
 };
 
 export const MapaPage: React.FC = () => {
