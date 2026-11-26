@@ -18,7 +18,11 @@ export type MapLayerKey =
   | 'desafio4Persistente'
   | 'desafio4Nuevo'
   | 'desafio4Sar'
-  | 'desafio4Prioridad';
+  | 'desafio4Prioridad'
+  | 'pilotoS2_2022'
+  | 'pilotoS2_2026'
+  | 'pilotoNdti'
+  | 'pilotoSar';
 
 export type LayerVisibility = Record<MapLayerKey, boolean>;
 
@@ -35,7 +39,11 @@ export const DEFAULT_LAYERS: LayerVisibility = {
   desafio4Persistente: true,
   desafio4Nuevo: true,
   desafio4Sar: false,
-  desafio4Prioridad: false
+  desafio4Prioridad: false,
+  pilotoS2_2022: false,
+  pilotoS2_2026: true,
+  pilotoNdti: true,
+  pilotoSar: false
 };
 
 export type MapSelection =
@@ -68,7 +76,10 @@ const TILE_URL = import.meta.env.VITE_TILE_URL || 'https://{s}.tile.openstreetma
 const TILE_ATTR = import.meta.env.VITE_TILE_ATTRIBUTION || '&copy; OpenStreetMap contributors';
 
 const BOLIVIA_BOUNDS = L.latLngBounds([-22.9, -69.65], [-9.68, -57.45]);
-
+const PILOTO_BOUNDS: L.LatLngBoundsExpression = [
+  [-15.62, -67.98], // [sur, oeste]
+  [-15.32, -67.62]  // [norte, este]
+];
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 function getColorPrioridad(valor: number): string {
@@ -196,11 +207,16 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 19 }).addTo(map);
     // Encuadre inicial: territorio boliviano completo.
     map.fitBounds(BOLIVIA_BOUNDS, { padding: [8, 8] });
-    L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
     [
       'departments',
       'rivers',
       'protectedAreas',
+      'pilotoS2_2022',
+      'pilotoS2_2026',
+      'pilotoNdti',
+      'pilotoSar',
+      'pilotoBorde',
       'desafio4Prioridad',
       'desafio4Persistente',
       'desafio4Nuevo',
@@ -279,6 +295,43 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     }
   }, [layers.departments, layers.protectedAreas, layers.rivers, highlightDepartment, adm3GeoJson]);
 
+
+  // Capas ráster Zona Piloto: Confluencia Tipuani - Mapiri - Kaka
+  useEffect(() => {
+    const g = groups.current;
+    if (!mapRef.current || !g.pilotoS2_2022) return;
+    ['pilotoS2_2022', 'pilotoS2_2026', 'pilotoNdti', 'pilotoSar', 'pilotoBorde'].forEach((k) =>
+      g[k].clearLayers()
+    );
+
+    if (layers.pilotoS2_2022) {
+      L.imageOverlay('/brand/piloto/s2_2022.png', PILOTO_BOUNDS, { opacity: 0.95 }).addTo(g.pilotoS2_2022);
+    }
+    if (layers.pilotoS2_2026) {
+      L.imageOverlay('/brand/piloto/s2_2026.png', PILOTO_BOUNDS, { opacity: 0.95 }).addTo(g.pilotoS2_2026);
+    }
+    if (layers.pilotoNdti) {
+      L.imageOverlay('/brand/piloto/ndti_2026.png', PILOTO_BOUNDS, { opacity: 0.95 }).addTo(g.pilotoNdti);
+    }
+    if (layers.pilotoSar) {
+      L.imageOverlay('/brand/piloto/s1_vv_2026.png', PILOTO_BOUNDS, { opacity: 0.95 }).addTo(g.pilotoSar);
+    }
+
+    if (layers.pilotoS2_2022 || layers.pilotoS2_2026 || layers.pilotoNdti || layers.pilotoSar) {
+      L.rectangle(PILOTO_BOUNDS, {
+        color: '#facc15',
+        weight: 2,
+        fill: false,
+        interactive: false
+      })
+        .bindTooltip('Zona Piloto: Confluencia Tipuani – Mapiri – Kaka')
+        .addTo(g.pilotoBorde);
+    }
+  }, [layers.pilotoS2_2022, layers.pilotoS2_2026, layers.pilotoNdti, layers.pilotoSar]);
+
+  // Capas Desafío 04 (GEE precalculado a escala nacional)
+
+  
   // Capas Desafío 04 (GEE precalculado a escala nacional)
   useEffect(() => {
     const g = groups.current;
