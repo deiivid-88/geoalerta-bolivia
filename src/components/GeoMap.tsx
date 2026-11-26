@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { AreaGeometry, CitizenReport, MiningRecord, SatelliteObservation, SourceDocument, TerritorialAlert } from '../types/domain';
 import { BOLIVIA_CENTER, BOLIVIA_ZOOM, DEPARTMENTS, PROTECTED_AREAS_DEMO, RIVERS_DEMO } from '../data/boliviaGeo';
+import boliviaAdm3 from '../data/bolivia_adm3.geojson';
 import { ADMIN_STATUS, ALERT_PRIORITY, DATA_COLORS, MINING_TYPE, OBSERVATION_TYPE, REPORT_CATEGORY } from '../domain/catalogs';
 
 export type MapLayerKey = 'records' | 'polygons' | 'reports' | 'satellites' | 'alerts' | 'sourceDocs' | 'protectedAreas' | 'departments' | 'rivers';
@@ -157,10 +158,36 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     g.protectedAreas.clearLayers();
     g.rivers.clearLayers();
     if (layers.departments) {
-      DEPARTMENTS.forEach((d) => {
-        const hl = highlightDepartment === d.name;
-        L.polygon(d.polygon, { color: '#17364D', weight: hl ? 2.5 : 1, dashArray: hl ? undefined : '4 4', fillColor: '#17364D', fillOpacity: hl ? 0.08 : 0.015, interactive: false }).addTo(g.departments);
-      });
+      // Malla detallada de límites territoriales (geoBoundaries ADM3)
+      L.geoJSON(boliviaAdm3 as GeoJSON.GeoJsonObject, {
+        style: {
+          color: '#17364D',
+          weight: 0.9,
+          opacity: 0.55,
+          fillColor: '#17364D',
+          fillOpacity: 0.02
+        },
+        onEachFeature: (feature, layer) => {
+          const name = feature.properties?.shapeName;
+          if (name) {
+            layer.bindTooltip(`Municipio: ${esc(String(name))}`, { sticky: true });
+          }
+        }
+      }).addTo(g.departments);
+
+      // Resaltado cuando se selecciona un departamento específico en los filtros
+      if (highlightDepartment) {
+        const dept = DEPARTMENTS.find((d) => d.name === highlightDepartment);
+        if (dept) {
+          L.polygon(dept.polygon, {
+            color: '#17364D',
+            weight: 2.5,
+            fillColor: '#17364D',
+            fillOpacity: 0.08,
+            interactive: false
+          }).addTo(g.departments);
+        }
+      }
     }
     if (layers.protectedAreas) {
       PROTECTED_AREAS_DEMO.forEach((a) =>
