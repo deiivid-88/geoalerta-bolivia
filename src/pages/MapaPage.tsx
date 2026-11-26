@@ -37,7 +37,11 @@ const LAYER_LABELS: Record<MapLayerKey, string> = {
   sourceDocs: 'Referencias institucionales (demo)',
   protectedAreas: 'Áreas protegidas (referencial)',
   departments: 'Límites departamentales (referencial)',
-  rivers: 'Ríos principales (referencial)'
+  rivers: 'Ríos principales (referencial)',
+  desafio4Persistente: 'Focos persistentes (2022–2026)',
+  desafio4Nuevo: 'Expansión nueva (2022–2026)',
+  desafio4Sar: 'Anomalías Radar SAR (sin nubes)',
+  desafio4Prioridad: 'Índice de prioridad ORO-4.2 (0–100)'
 };
 
 export const MapaPage: React.FC = () => {
