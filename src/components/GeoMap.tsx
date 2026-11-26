@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { AreaGeometry, CitizenReport, MiningRecord, SatelliteObservation, SourceDocument, TerritorialAlert } from '../types/domain';
 import { BOLIVIA_CENTER, BOLIVIA_ZOOM, DEPARTMENTS, PROTECTED_AREAS_DEMO, RIVERS_DEMO } from '../data/boliviaGeo';
-import boliviaAdm3 from '../data/bolivia_adm3.geojson';
+import boliviaAdm3 from '../data/bolivia_adm3_ligero.geojson';
 import { ADMIN_STATUS, ALERT_PRIORITY, DATA_COLORS, MINING_TYPE, OBSERVATION_TYPE, REPORT_CATEGORY } from '../domain/catalogs';
 
 export type MapLayerKey = 'records' | 'polygons' | 'reports' | 'satellites' | 'alerts' | 'sourceDocs' | 'protectedAreas' | 'departments' | 'rivers';
