@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Search, X } from 'lucide-react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Box, Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Search, X } from 'lucide-react';
 import type { AdminStatus, MiningType, VerificationState } from '../types/domain';
 import { useData } from '../app/data';
 import { navigate, useRoute } from '../app/router';
@@ -29,6 +29,7 @@ import { formatCoord, formatDate } from '../domain/util';
 import { isInsideBolivia, parseCoordinateQuery } from '../domain/validation';
 
 const PILOTO_VIEW = { lat: -15.47, lng: -67.8, zoom: 12 };
+const GeoMap3D = lazy(() => import('../components/GeoMap3D').then((m) => ({ default: m.GeoMap3D })));
 
 const LAYER_LABELS: Record<MapLayerKey, string> = {
   records: 'Registros mineros (puntos)',
@@ -104,6 +105,7 @@ export const MapaPage: React.FC = () => {
     return { kind, id: rest.join(':') } as MapSelection;
   });
   const [panelOpen, setPanelOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
 
   const dept = DEPARTMENTS.find((d) => d.name === department);
   const provinces = dept ? Array.from(new Set(dept.municipalities.map((m) => m.province))) : [];
@@ -348,20 +350,45 @@ export const MapaPage: React.FC = () => {
 
         {/* Mapa */}
         <div className="relative min-h-0">
-          <GeoMap
-            className="h-full"
-            records={filteredRecords}
-            reports={filteredReports}
-            satellites={filteredSats}
-            alerts={filteredAlerts}
-            sourceDocuments={sourceDocuments}
-            layers={layers}
-            selected={selected}
-            onSelect={setSelected}
-            focus={focus}
-            pin={pin}
-            highlightDepartment={department}
-          />
+          {viewMode === '2d' ? (
+            <GeoMap
+              className="h-full"
+              records={filteredRecords}
+              reports={filteredReports}
+              satellites={filteredSats}
+              alerts={filteredAlerts}
+              sourceDocuments={sourceDocuments}
+              layers={layers}
+              selected={selected}
+              onSelect={setSelected}
+              focus={focus}
+              pin={pin}
+              highlightDepartment={department}
+            />
+          ) : (
+            <Suspense
+              fallback={
+                <div className="h-full w-full flex items-center justify-center bg-ivory-50 text-sm font-semibold text-navy-900">
+                  Cargando relieve 3D de Bolivia...
+                </div>
+              }
+            >
+              <GeoMap3D
+                className="h-full"
+                records={filteredRecords}
+                reports={filteredReports}
+                satellites={filteredSats}
+                alerts={filteredAlerts}
+                sourceDocuments={sourceDocuments}
+                layers={layers}
+                selected={selected}
+                onSelect={setSelected}
+                focus={focus}
+                pin={pin}
+                highlightDepartment={department}
+              />
+            </Suspense>
+          )}
           {/* Buscador flotante */}
           <div className="absolute top-3 left-14 right-3 sm:right-auto sm:w-[420px] z-[900]">
             <form onSubmit={submitSearch} className="relative">
@@ -410,6 +437,15 @@ export const MapaPage: React.FC = () => {
             </Button>
             <Button size="sm" variant="secondary" className="shadow-pop" icon={<MapPin className="w-3.5 h-3.5" />} onClick={goToPiloto}>
               Zona Piloto: Tipuani–Mapiri
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === '3d' ? 'primary' : 'secondary'}
+              className="shadow-pop"
+              icon={<Box className="w-3.5 h-3.5" />}
+              onClick={() => setViewMode((m) => (m === '2d' ? '3d' : '2d'))}
+            >
+              {viewMode === '2d' ? 'Vista 3D' : 'Volver a 2D'}
             </Button>
           </div>
 
