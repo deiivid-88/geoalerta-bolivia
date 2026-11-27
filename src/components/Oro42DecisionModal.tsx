@@ -251,4 +251,411 @@ export const Oro42DecisionModal: React.FC<Oro42DecisionModalProps> = ({ onClose,
               <div className="grid lg:grid-cols-[1.15fr_1fr] gap-4">
                 {/* Matriz SVG */}
                 <div className="rounded-lg border border-ink-200 bg-white p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between gap-
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wide text-navy-900">
+                        Matriz estratégica de priorización (Top {sites.length})
+                      </h3>
+                      <p className="text-[11px] text-ink-500">
+                        Haz clic en cualquier punto para inspeccionar protocolo de campo y volar al sitio.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => downloadGpx(sites, 'top15_oro42_brigada.gpx')}
+                      className="shrink-0 inline-flex items-center gap-1 rounded-md border border-teal-700/30 bg-teal-50 px-2.5 py-1.5 text-[11px] font-semibold text-teal-900 hover:bg-teal-100"
+                      title="Descargar los 15 waypoints para GPS Garmin, OsmAnd o Gaia GPS"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Top 15 (.gpx)
+                    </button>
+                  </div>
+
+                  <svg
+                    viewBox={`0 0 ${W} ${H}`}
+                    className="w-full h-auto rounded-md border border-ink-200 bg-white"
+                    role="img"
+                    aria-label="Gráfico de dispersión Riesgo Ambiental versus Valor Recuperable"
+                  >
+                    {/* Fondos suaves por cuadrante */}
+                    <rect x={PAD_L} y={PAD_T} width={plotW / 2} height={plotH / 2} fill="#fff7ed" />
+                    <rect x={PAD_L + plotW / 2} y={PAD_T} width={plotW / 2} height={plotH / 2} fill="#fef2f2" />
+                    <rect x={PAD_L} y={PAD_T + plotH / 2} width={plotW / 2} height={plotH / 2} fill="#f8fafc" />
+                    <rect x={PAD_L + plotW / 2} y={PAD_T + plotH / 2} width={plotW / 2} height={plotH / 2} fill="#ecfeff" />
+
+                    {/* Líneas divisorias en 50/50 */}
+                    <line
+                      x1={toX(50)}
+                      y1={PAD_T}
+                      x2={toX(50)}
+                      y2={PAD_T + plotH}
+                      stroke="#94a3b8"
+                      strokeDasharray="4 3"
+                      strokeWidth={1}
+                    />
+                    <line
+                      x1={PAD_L}
+                      y1={toY(50)}
+                      x2={PAD_L + plotW}
+                      y2={toY(50)}
+                      stroke="#94a3b8"
+                      strokeDasharray="4 3"
+                      strokeWidth={1}
+                    />
+
+                    {/* Etiquetas de cuadrantes */}
+                    <text x={PAD_L + 6} y={PAD_T + 13} fontSize="9" fontWeight="700" fill="#c2410c">
+                      ALTO RIESGO (CONTENCIÓN)
+                    </text>
+                    <text x={PAD_L + plotW - 6} y={PAD_T + 13} fontSize="9" fontWeight="700" fill="#b91c1c" textAnchor="end">
+                      CRÍTICO REPROCESABLE
+                    </text>
+                    <text x={PAD_L + 6} y={PAD_T + plotH - 6} fontSize="9" fontWeight="700" fill="#64748b">
+                      MONITOREO
+                    </text>
+                    <text x={PAD_L + plotW - 6} y={PAD_T + plotH - 6} fontSize="9" fontWeight="700" fill="#0e7490" textAnchor="end">
+                      OPORTUNIDAD REPROCESO
+                    </text>
+
+                    {/* Ejes y marcas */}
+                    <rect x={PAD_L} y={PAD_T} width={plotW} height={plotH} fill="none" stroke="#cbd5e1" strokeWidth={1} />
+                    {[0, 50, 100].map((tick) => (
+                      <g key={tick}>
+                        <text x={toX(tick)} y={H - 18} fontSize="9" fill="#64748b" textAnchor="middle">
+                          {tick}
+                        </text>
+                        <text x={PAD_L - 6} y={toY(tick) + 3} fontSize="9" fill="#64748b" textAnchor="end">
+                          {tick}
+                        </text>
+                      </g>
+                    ))}
+                    <text x={PAD_L + plotW / 2} y={H - 4} fontSize="10" fontWeight="700" fill="#17364d" textAnchor="middle">
+                      Valor / Potencial de Reprocesamiento (0–100) →
+                    </text>
+                    <text
+                      x={12}
+                      y={PAD_T + plotH / 2}
+                      fontSize="10"
+                      fontWeight="700"
+                      fill="#17364d"
+                      textAnchor="middle"
+                      transform={`rotate(-90 12 ${PAD_T + plotH / 2})`}
+                    >
+                      Riesgo Ambiental Hg (0–100) →
+                    </text>
+
+                    {/* Puntos de los Top 15 sitios */}
+                    {sites.map((s) => {
+                      const meta = getCategoryMeta(s.categoria);
+                      const isSel = selectedSite?.rank === s.rank;
+                      const cxPos = toX(s.valor_indice);
+                      const cyPos = toY(s.riesgo_indice);
+                      return (
+                        <g
+                          key={s.rank}
+                          onClick={() => setSelectedRank(s.rank)}
+                          className="cursor-pointer"
+                        >
+                          <title>{`#${s.rank} · ${meta.label} | Prioridad ${s.prioridad_total}/100 | Riesgo ${s.riesgo_indice} · Valor ${s.valor_indice}`}</title>
+                          {isSel && (
+                            <circle
+                              cx={cxPos}
+                              cy={cyPos}
+                              r={12}
+                              fill={meta.color}
+                              fillOpacity={0.18}
+                              stroke={meta.color}
+                              strokeWidth={1.5}
+                            />
+                          )}
+                          <circle
+                            cx={cxPos}
+                            cy={cyPos}
+                            r={isSel ? 7.5 : 6}
+                            fill={meta.color}
+                            stroke="#ffffff"
+                            strokeWidth={1.5}
+                          />
+                          <text
+                            x={cxPos}
+                            y={cyPos + 2.8}
+                            fontSize="7.5"
+                            fontWeight="700"
+                            fill="#ffffff"
+                            textAnchor="middle"
+                            className="pointer-events-none select-none"
+                          >
+                            {s.rank}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+
+                  {/* Selector rápido por ranking #1..#15 */}
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {sites.map((s) => {
+                      const isSel = selectedSite?.rank === s.rank;
+                      return (
+                        <button
+                          key={s.rank}
+                          type="button"
+                          onClick={() => setSelectedRank(s.rank)}
+                          className={`rounded px-2 py-0.5 text-[11px] font-semibold tabular-nums transition-colors ${
+                            isSel
+                              ? 'bg-navy-900 text-white'
+                              : 'border border-ink-200 bg-ivory-50 text-ink-700 hover:bg-teal-50'
+                          }`}
+                        >
+                          #{s.rank}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Ficha y protocolo de brigada del sitio seleccionado */}
+                {selectedSite && (
+                  <div className="rounded-lg border border-ink-200 bg-white p-3.5 flex flex-col justify-between gap-3">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wide text-ink-500">
+                            Cuadrante prioritario #{selectedSite.rank} de {sites.length}
+                          </div>
+                          <h3 className="text-base font-bold text-navy-900">
+                            Prioridad {selectedSite.prioridad_total.toFixed(1)} / 100
+                          </h3>
+                        </div>
+                        <span
+                          className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${getCategoryMeta(selectedSite.categoria).badgeClass}`}
+                        >
+                          {getCategoryMeta(selectedSite.categoria).label}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-md border border-ink-200 bg-ivory-50 p-2">
+                          <div className="text-[10px] text-ink-500 font-semibold">Riesgo Hg</div>
+                          <div className="text-sm font-bold text-coral-600 tabular-nums">{selectedSite.riesgo_indice}/100</div>
+                        </div>
+                        <div className="rounded-md border border-ink-200 bg-ivory-50 p-2">
+                          <div className="text-[10px] text-ink-500 font-semibold">Valor Recup.</div>
+                          <div className="text-sm font-bold text-teal-800 tabular-nums">{selectedSite.valor_indice}/100</div>
+                        </div>
+                        <div className="rounded-md border border-ink-200 bg-ivory-50 p-2">
+                          <div className="text-[10px] text-ink-500 font-semibold">Vol. Colas</div>
+                          <div className="text-sm font-bold text-navy-900 tabular-nums">
+                            {Math.round(selectedSite.vol_colas_m3).toLocaleString('es-BO')} m&sup3;
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-ink-700 bg-ivory-50/70 rounded-md p-2.5 border border-ink-200/70">
+                        <div><strong>Persistente:</strong> {selectedSite.ha_persistente} ha</div>
+                        <div><strong>Expansión nueva:</strong> {selectedSite.ha_nuevo} ha</div>
+                        <div><strong>Pasivo en reposo:</strong> {selectedSite.ha_pasivo} ha</div>
+                        <div><strong>Turbidez NDTI:</strong> {selectedSite.ndti_turbidez}</div>
+                        <div><strong>Anomalías SAR:</strong> {selectedSite.pixeles_sar} px</div>
+                        <div className="font-mono text-[11px]">
+                          {selectedSite.lat.toFixed(4)}, {selectedSite.lon.toFixed(4)}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-navy-900 flex items-center gap-1.5">
+                          <ShieldAlert className="w-3.5 h-3.5 text-teal-800" /> Protocolo recomendado para brigada
+                        </div>
+                        <ul className="space-y-1 text-xs text-ink-700 list-disc pl-4 leading-relaxed">
+                          {getCategoryMeta(selectedSite.categoria).protocol.map((step, i) => (
+                            <li key={i}>{step}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Acciones directas de campo */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-ink-200">
+                      <button
+                        type="button"
+                        onClick={() => onFlyToSite(selectedSite.lat, selectedSite.lon)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-md bg-navy-900 px-2.5 py-2 text-xs font-semibold text-white hover:bg-navy-800"
+                      >
+                        <MapPin className="w-3.5 h-3.5" /> Ir al mapa
+                      </button>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${selectedSite.lat},${selectedSite.lon}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-md border border-ink-200 bg-white px-2.5 py-2 text-xs font-semibold text-navy-900 hover:bg-teal-50"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-teal-800" /> Google Maps
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => downloadGpx([selectedSite], `sitio_oro42_rank${selectedSite.rank}.gpx`)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-md border border-teal-700/30 bg-teal-50 px-2.5 py-2 text-xs font-semibold text-teal-900 hover:bg-teal-100"
+                      >
+                        <Navigation className="w-3.5 h-3.5" /> Punto .gpx
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Fila 2: Simulador paramétrico de reprocesamiento limpio */}
+              <div className="rounded-lg border border-ink-200 bg-white p-4 space-y-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-navy-900 flex items-center gap-1.5">
+                      <Calculator className="w-4 h-4 text-teal-800" /> Simulador de Reprocesamiento Limpio (Libre de Mercurio)
+                    </h3>
+                    <p className="text-[11px] text-ink-500">
+                      Estima el valor económico recuperable de colas aluviales mediante concentración gravimétrica y el mercurio evitado.
+                    </p>
+                  </div>
+
+                  {/* Alcance del cálculo */}
+                  <div className="inline-flex rounded-md border border-ink-200 bg-ivory-50 p-0.5 text-[11px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setSimScope('all')}
+                      className={`rounded px-2.5 py-1 transition-colors ${
+                        simScope === 'all' ? 'bg-navy-900 text-white' : 'text-ink-700 hover:bg-white'
+                      }`}
+                    >
+                      Todos (Top {sites.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSimScope('critical')}
+                      className={`rounded px-2.5 py-1 transition-colors ${
+                        simScope === 'critical' ? 'bg-navy-900 text-white' : 'text-ink-700 hover:bg-white'
+                      }`}
+                    >
+                      Solo Críticos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSimScope('selected')}
+                      className={`rounded px-2.5 py-1 transition-colors ${
+                        simScope === 'selected' ? 'bg-navy-900 text-white' : 'text-ink-700 hover:bg-white'
+                      }`}
+                    >
+                      Sitio #{selectedSite?.rank ?? 1}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Deslizadores */}
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-ivory-50 rounded-md p-3 border border-ink-200/80">
+                  <label className="space-y-1 text-xs">
+                    <div className="flex justify-between font-semibold text-navy-900">
+                      <span>Ley residual en colas</span>
+                      <span className="tabular-nums text-teal-800">{gradeGPerM3.toFixed(2)} g Au/m&sup3;</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.05}
+                      max={0.6}
+                      step={0.01}
+                      value={gradeGPerM3}
+                      onChange={(e) => setGradeGPerM3(Number(e.target.value))}
+                      className="w-full accent-teal-700 cursor-pointer"
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-xs">
+                    <div className="flex justify-between font-semibold text-navy-900">
+                      <span>Recup. gravimétrica</span>
+                      <span className="tabular-nums text-teal-800">{recoveryPct}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={45}
+                      max={85}
+                      step={1}
+                      value={recoveryPct}
+                      onChange={(e) => setRecoveryPct(Number(e.target.value))}
+                      className="w-full accent-teal-700 cursor-pointer"
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-xs">
+                    <div className="flex justify-between font-semibold text-navy-900">
+                      <span>Precio referencial Au</span>
+                      <span className="tabular-nums text-teal-800">${goldUsdPerG} USD/g</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={60}
+                      max={110}
+                      step={1}
+                      value={goldUsdPerG}
+                      onChange={(e) => setGoldUsdPerG(Number(e.target.value))}
+                      className="w-full accent-teal-700 cursor-pointer"
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-xs">
+                    <div className="flex justify-between font-semibold text-navy-900">
+                      <span>Ratio Hg evitado</span>
+                      <span className="tabular-nums text-teal-800">{hgRatio.toFixed(1)} g Hg/g Au</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1.0}
+                      max={3.5}
+                      step={0.1}
+                      value={hgRatio}
+                      onChange={(e) => setHgRatio(Number(e.target.value))}
+                      className="w-full accent-teal-700 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                {/* Resultados KPI */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="rounded-lg border border-ink-200 bg-white p-3">
+                    <div className="text-[10px] font-bold uppercase text-ink-500">
+                      Colas evaluadas ({simulation.count} sitio{simulation.count === 1 ? '' : 's'})
+                    </div>
+                    <div className="text-base sm:text-lg font-bold text-navy-900 tabular-nums mt-0.5">
+                      {Math.round(simulation.totalVolM3).toLocaleString('es-BO')} m&sup3;
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-ink-200 bg-white p-3">
+                    <div className="text-[10px] font-bold uppercase text-ink-500">Oro recuperable limpio</div>
+                    <div className="text-base sm:text-lg font-bold text-amber-700 tabular-nums mt-0.5">
+                      {simulation.goldKg >= 1
+                        ? `${simulation.goldKg.toFixed(2)} kg`
+                        : `${Math.round(simulation.goldGrams).toLocaleString('es-BO')} g`}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-teal-200 bg-teal-50/70 p-3">
+                    <div className="text-[10px] font-bold uppercase text-teal-800">Valor bruto potencial</div>
+                    <div className="text-base sm:text-lg font-bold text-teal-900 tabular-nums mt-0.5">
+                      ${Math.round(simulation.grossUsd).toLocaleString('es-BO')} USD
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-red-200 bg-red-50/60 p-3">
+                    <div className="text-[10px] font-bold uppercase text-red-800">Mercurio evitado</div>
+                    <div className="text-base sm:text-lg font-bold text-red-900 tabular-nums mt-0.5">
+                      {simulation.hgAvoidedKg.toFixed(1)} kg Hg
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-ink-500 leading-relaxed">
+                  * Pre-estimación paramétrica basada en volumen satelital conservador de colas (20 % del área intervenida × 1.5 m de espesor) para orientar la priorización de muestreo; los valores económicos definitivos requieren ensayos de ley y batimetría en campo.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
