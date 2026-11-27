@@ -1,10 +1,11 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { Box, Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Play, Search, X } from 'lucide-react';
+import { ArrowLeftRight, Box, Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Play, Search, X } from 'lucide-react';
 import type { AdminStatus, MiningType, VerificationState } from '../types/domain';
 import { useData } from '../app/data';
 import { navigate, useRoute } from '../app/router';
 import { DEFAULT_LAYERS, GeoMap, MapLegend, type LayerVisibility, type MapLayerKey, type MapSelection } from '../components/GeoMap';
 import { GuidedTourORO42, TOUR_STEPS } from '../components/GuidedTourORO42';
+import { PilotoSwipeModal } from '../components/PilotoSwipeModal';
 import { StatusBadge, VerificationBadge } from '../components/records';
 import { Badge, Button, DemoBadge, DL, Input, Select, cx } from '../components/ui';
 import { BOLIVIA_CENTER, BOLIVIA_ZOOM, DEPARTMENTS } from '../data/boliviaGeo';
@@ -108,6 +109,7 @@ export const MapaPage: React.FC = () => {
   const [panelOpen, setPanelOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [tourStep, setTourStep] = useState<number | null>(null);
+  const [swipeOpen, setSwipeOpen] = useState(false);
 
   const dept = DEPARTMENTS.find((d) => d.name === department);
   const provinces = dept ? Array.from(new Set(dept.municipalities.map((m) => m.province))) : [];
@@ -341,14 +343,27 @@ export const MapaPage: React.FC = () => {
                     </label>
                   ))}
                   {group.id === 'piloto' && (
-                    <a
-                      href="/brand/piloto/top15_sitios.csv"
-                      download="top15_sitios_oro42.csv"
-                      className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-ink-200 bg-ivory-50 px-2.5 py-1.5 text-xs font-semibold text-navy-900 hover:bg-teal-50 transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5 text-teal-800" />
-                      Descargar Top 15 GPS (.csv)
-                    </a>
+                    <div className="pt-2 space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSwipeOpen(true);
+                          setPanelOpen(false);
+                        }}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-teal-700/30 bg-teal-50 px-2.5 py-1.5 text-xs font-semibold text-teal-900 hover:bg-teal-100 transition-colors"
+                      >
+                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                        Comparar 2022 ⟷ 2026
+                      </button>
+                      <a
+                        href="/brand/piloto/top15_sitios.csv"
+                        download="top15_sitios_oro42.csv"
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-ink-200 bg-ivory-50 px-2.5 py-1.5 text-xs font-semibold text-navy-900 hover:bg-teal-50 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5 text-teal-800" />
+                        Descargar Top 15 GPS (.csv)
+                      </a>
+                    </div>
                   )}
                 </div>
               ))}
@@ -437,186 +452,4 @@ export const MapaPage: React.FC = () => {
             {parseCoordinateQuery(search) && <p className="mt-1 text-[11px] bg-white/95 rounded px-2 py-1 shadow text-ink-700">Pulse Enter para ubicar las coordenadas.</p>}
             {pin && (
               <div className="mt-1 text-[11px] bg-white/95 rounded px-2 py-1 shadow text-ink-700 flex items-center gap-2">
-                <Crosshair className="w-3.5 h-3.5 text-coral-600" /> {formatCoord(pin.lat, pin.lng)} · {nearPin} registro(s) a ~10 km
-                <button type="button" className="ml-auto text-teal-800" onClick={() => setPin(null)}>
-                  Quitar
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="absolute bottom-6 left-3 z-[900] flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" className="shadow-pop lg:hidden" icon={<Filter className="w-3.5 h-3.5" />} onClick={() => setPanelOpen(true)}>
-              Filtros y capas
-            </Button>
-            <Button size="sm" variant="primary" className="shadow-pop" icon={<Compass className="w-3.5 h-3.5" />} onClick={() => setFocus({ lat: BOLIVIA_CENTER[0], lng: BOLIVIA_CENTER[1], zoom: BOLIVIA_ZOOM, key: `bo-${Date.now()}` })}>
-              Vista de Bolivia
-            </Button>
-            <Button size="sm" variant="secondary" className="shadow-pop" icon={<MapPin className="w-3.5 h-3.5" />} onClick={goToPiloto}>
-              Zona Piloto: Tipuani–Mapiri
-            </Button>
-            <Button
-              size="sm"
-              variant={viewMode === '3d' ? 'primary' : 'secondary'}
-              className="shadow-pop"
-              icon={<Box className="w-3.5 h-3.5" />}
-              onClick={() => setViewMode((m) => (m === '2d' ? '3d' : '2d'))}
-            >
-              {viewMode === '2d' ? 'Vista 3D' : 'Volver a 2D'}
-            </Button>
-            <Button
-              size="sm"
-              variant={tourStep !== null ? 'primary' : 'secondary'}
-              className="shadow-pop"
-              icon={<Play className="w-3.5 h-3.5" />}
-              onClick={() => (tourStep !== null ? setTourStep(null) : applyTourStep(0))}
-            >
-              {tourStep !== null ? 'Cerrar tour' : 'Tour ORO-4.2 (4 pasos)'}
-            </Button>
-          </div>
-
-          {tourStep !== null && (
-            <GuidedTourORO42
-              stepIndex={tourStep}
-              onStepChange={applyTourStep}
-              onClose={() => setTourStep(null)}
-            />
-          )}
-
-          {selected && <FeatureCard sel={selected} onClose={() => setSelected(null)} />}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/** Ficha detallada del elemento seleccionado. */
-const FeatureCard: React.FC<{ sel: MapSelection; onClose: () => void }> = ({ sel, onClose }) => {
-  const { miningRecords, reports, satellites, alerts, sourceDocuments } = useData();
-  let body: React.ReactNode = null;
-  let title = '';
-  let kindLabel = '';
-  let link: { href: string; label: string } | null = null;
-
-  if (sel.kind === 'record') {
-    const r = miningRecords.find((x) => x.id === sel.id);
-    if (!r) return null;
-    kindLabel = 'Registro minero';
-    title = r.name;
-    link = { href: `#/registros/${r.id}`, label: 'Abrir ficha completa' };
-    body = (
-      <>
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          <StatusBadge status={r.adminStatus} />
-          <VerificationBadge state={r.classification.verificationState} />
-          <DemoBadge show={r.origin === 'demo'} />
-        </div>
-        <DL
-          cols={1}
-          items={[
-            ['Identificador', <span key="i" className="font-mono text-xs">{r.id}</span>],
-            ['Coordenadas', <span key="c" className="font-mono text-xs">{formatCoord(r.lat, r.lng)}</span>],
-            ['Ubicación', `${r.locality ? `${r.locality}, ` : ''}${r.municipality} · ${r.province} · ${r.department}`],
-            ['Tipo de actividad', MINING_TYPE[r.miningType].label],
-            ['Titular u operador', r.holder],
-            ['Código de derecho minero', r.miningRightCode],
-            ['Respaldo de la clasificación', r.classification.sourceDocument ? `${r.classification.sourceDocument} (${r.classification.sourceInstitution}) · consultado ${formatDate(r.classification.consultedAt)}` : 'Sin respaldo documental'],
-            ['Fecha de registro / actualización', `${formatDate(r.registeredAt)} / ${formatDate(r.updatedAt)}`],
-            ['Fuente', r.source],
-            ['Evidencias', `${r.evidences.length} documento(s)`],
-            ['Observaciones', r.observations]
-          ]}
-        />
-      </>
-    );
-  } else if (sel.kind === 'report') {
-    const r = reports.find((x) => x.id === sel.id);
-    if (!r) return null;
-    kindLabel = 'Denuncia ciudadana · no verificada';
-    title = REPORT_CATEGORY[r.category].label;
-    link = { href: `#/denuncias/${r.id}`, label: 'Abrir denuncia' };
-    body = (
-      <DL
-        cols={1}
-        items={[
-          ['Código', <span key="c" className="font-mono text-xs">{r.trackingCode}</span>],
-          ['Estado', <Badge key="s" className={REPORT_STATUS[r.status].badge}>{REPORT_STATUS[r.status].label}</Badge>],
-          ['Ubicación aproximada', `${r.community}, ${r.municipality} · ${r.department}`],
-          ['Fecha de observación', formatDate(r.observedDate)],
-          ['Descripción', r.description],
-          ['Registro minero vinculado', r.relatedMiningRecordId]
-        ]}
-      />
-    );
-  } else if (sel.kind === 'satellite') {
-    const o = satellites.find((x) => x.id === sel.id);
-    if (!o) return null;
-    kindLabel = 'Observación satelital';
-    title = o.zoneName;
-    link = { href: `#/satelital/${o.id}`, label: 'Abrir observación y comparador' };
-    body = (
-      <>
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          <Badge className={OBSERVATION_ORIGIN[o.origin].badge}>{OBSERVATION_ORIGIN[o.origin].label}</Badge>
-          <Badge className={REVIEW_STATE[o.reviewState].badge}>{REVIEW_STATE[o.reviewState].label}</Badge>
-          <Badge className={CONFIDENCE[o.confidence].badge}>{CONFIDENCE[o.confidence].label}</Badge>
-        </div>
-        <DL
-          cols={1}
-          items={[
-            ['ID', <span key="i" className="font-mono text-xs">{o.id}</span>],
-            ['Tipo de cambio', OBSERVATION_TYPE[o.observationType]],
-            ['Sensor / fecha', `${SENSOR[o.sensor]} · ${formatDate(o.acquisitionDate)}`],
-            ['Superficie estimada', `${o.approxAreaHa} ha`],
-            ['Descripción', o.changeDescription],
-            ['Verificación documental', o.documentalVerification ? `${o.documentalVerification.document} (${o.documentalVerification.institution})` : 'Pendiente']
-          ]}
-        />
-      </>
-    );
-  } else if (sel.kind === 'alert') {
-    const a = alerts.find((x) => x.id === sel.id);
-    if (!a) return null;
-    kindLabel = 'Alerta territorial';
-    title = a.title;
-    link = { href: `#/alertas?id=${a.id}`, label: 'Gestionar alerta' };
-    body = (
-      <>
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          <Badge className={ALERT_PRIORITY[a.priority].badge}>{ALERT_PRIORITY[a.priority].label}</Badge>
-          <Badge className={ALERT_STATUS[a.status].badge}>{ALERT_STATUS[a.status].label}</Badge>
-        </div>
-        <DL cols={1} items={[['Tipo', ALERT_TYPE[a.type]], ['Ubicación', `${a.municipality} · ${a.department}`], ['Creada', formatDate(a.createdAt)], ['Descripción', a.description]]} />
-      </>
-    );
-  } else {
-    const d = sourceDocuments.find((x) => x.id === sel.id);
-    if (!d) return null;
-    kindLabel = 'Referencia institucional (demo)';
-    title = d.title;
-    link = { href: '#/institucional', label: 'Ver fuentes institucionales' };
-    body = <DL cols={1} items={[['Institución', d.institution], ['Tipo', d.recordType], ['Código', d.codeReference], ['Resumen', d.summary]]} />;
-  }
-
-  return (
-    <aside className="absolute z-[1000] bg-white shadow-pop border border-ink-200 rounded-lg overflow-hidden flex flex-col inset-x-2 bottom-2 max-h-[60%] sm:inset-x-auto sm:right-3 sm:top-3 sm:bottom-3 sm:w-[360px] sm:max-h-none" aria-label="Ficha del elemento">
-      <div className="flex items-start justify-between gap-2 px-4 py-3 border-b border-ink-200 bg-ivory-50">
-        <div className="min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-teal-800">{kindLabel}</div>
-          <h3 className="text-sm font-bold text-navy-900 leading-snug">{title}</h3>
-        </div>
-        <button type="button" onClick={onClose} aria-label="Cerrar ficha" className="p-1 rounded hover:bg-ink-100 text-ink-500">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      <div className="p-4 overflow-y-auto flex-1 text-sm">{body}</div>
-      {link && (
-        <div className="p-3 border-t border-ink-200">
-          <Button variant="primary" className="w-full" icon={<ExternalLink className="w-4 h-4" />} onClick={() => navigate(link!.href.slice(1))}>
-            {link.label}
-          </Button>
-        </div>
-      )}
-    </aside>
-  );
-};
+                <Crosshair className="w-3.5
