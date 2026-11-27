@@ -1,10 +1,11 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, Box, Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Play, Search, X } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, Box, Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Play, Search, X } from 'lucide-react';
 import type { AdminStatus, MiningType, VerificationState } from '../types/domain';
 import { useData } from '../app/data';
 import { navigate, useRoute } from '../app/router';
 import { DEFAULT_LAYERS, GeoMap, MapLegend, type LayerVisibility, type MapLayerKey, type MapSelection } from '../components/GeoMap';
 import { GuidedTourORO42, TOUR_STEPS } from '../components/GuidedTourORO42';
+import { Oro42DecisionModal } from '../components/Oro42DecisionModal';
 import { PilotoSwipeModal } from '../components/PilotoSwipeModal';
 import { StatusBadge, VerificationBadge } from '../components/records';
 import { Badge, Button, DemoBadge, DL, Input, Select, cx } from '../components/ui';
@@ -110,6 +111,7 @@ export const MapaPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [tourStep, setTourStep] = useState<number | null>(null);
   const [swipeOpen, setSwipeOpen] = useState(false);
+  const [decisionOpen, setDecisionOpen] = useState(false);
 
   const dept = DEPARTMENTS.find((d) => d.name === department);
   const provinces = dept ? Array.from(new Set(dept.municipalities.map((m) => m.province))) : [];
@@ -188,6 +190,15 @@ export const MapaPage: React.FC = () => {
     });
     setFocus({ ...PILOTO_VIEW, key: `piloto-${Date.now()}` });
     setPanelOpen(false);
+  };
+
+  const flyToTop15Site = (lat: number, lng: number) => {
+    setDecisionOpen(false);
+    setTourStep(null);
+    setPanelOpen(false);
+    setLayers((prev) => ({ ...prev, pilotoS2_2026: true, pilotoTop15: true }));
+    setPin({ lat, lng });
+    setFocus({ lat, lng, zoom: 14, key: `top15-${lat}-${lng}-${Date.now()}` });
   };
 
   const resetAll = () => {
@@ -347,6 +358,17 @@ export const MapaPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
+                          setDecisionOpen(true);
+                          setPanelOpen(false);
+                        }}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-navy-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-navy-800 transition-colors"
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        Matriz y Simulador ORO-4.2
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setSwipeOpen(true);
                           setPanelOpen(false);
                         }}
@@ -497,6 +519,15 @@ export const MapaPage: React.FC = () => {
             >
               Comparar 2022 ⟷ 2026
             </Button>
+            <Button
+              size="sm"
+              variant={decisionOpen ? 'primary' : 'secondary'}
+              className="shadow-pop"
+              icon={<BarChart3 className="w-3.5 h-3.5" />}
+              onClick={() => setDecisionOpen(true)}
+            >
+              Matriz y Simulador
+            </Button>
           </div>
 
           {tourStep !== null && (
@@ -512,6 +543,12 @@ export const MapaPage: React.FC = () => {
       </div>
 
       {swipeOpen && <PilotoSwipeModal onClose={() => setSwipeOpen(false)} />}
+      {decisionOpen && (
+        <Oro42DecisionModal
+          onClose={() => setDecisionOpen(false)}
+          onFlyToSite={flyToTop15Site}
+        />
+      )}
     </div>
   );
 };
