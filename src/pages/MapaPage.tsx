@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftRight, BarChart3, Box, Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Play, Search, X } from 'lucide-react';
 import type { AdminStatus, MiningType, VerificationState } from '../types/domain';
 import { useData } from '../app/data';
@@ -137,10 +137,68 @@ export const MapaPage: React.FC = () => {
   }, [miningRecords.length, reports.length, satellites.length]);
 
 // Sincronizar escenas automáticas del botón global Demo 60s
+  const recordsRef = useRef(miningRecords);
+  recordsRef.current = miningRecords;
+
+  // Sincronizar escenas automáticas del botón global Demo 60s
   useEffect(() => {
+    const allOff = () =>
+      Object.fromEntries(
+        (Object.keys(DEFAULT_LAYERS) as MapLayerKey[]).map((k) => [k, false])
+      ) as LayerVisibility;
+
     const applyScene = (scene: DemoMapScene | null) => {
       if (!scene) return;
-      if (scene === 'piloto-3d') {
+
+      if (scene === 'nacional-ficha') {
+        setSwipeOpen(false);
+        setDecisionOpen(false);
+        setTourStep(null);
+        setPin(null);
+        setPanelOpen(false);
+        setViewMode('2d');
+        setLayers({
+          ...allOff(),
+          records: true,
+          polygons: true,
+          reports: true,
+          satellites: true,
+          alerts: true,
+          protectedAreas: true,
+          departments: true
+        });
+        setFocus({
+          lat: BOLIVIA_CENTER[0],
+          lng: BOLIVIA_CENTER[1],
+          zoom: BOLIVIA_ZOOM,
+          key: `demo-nac-ficha-${Date.now()}`
+        });
+        const first = recordsRef.current[0];
+        setSelected(first ? { kind: 'record', id: first.id } : null);
+      } else if (scene === 'nacional-oro42') {
+        setSwipeOpen(false);
+        setDecisionOpen(false);
+        setTourStep(null);
+        setSelected(null);
+        setPin(null);
+        setPanelOpen(false);
+        setViewMode('2d');
+        setLayers({
+          ...allOff(),
+          departments: true,
+          protectedAreas: true,
+          desafio4Persistente: true,
+          desafio4Nuevo: true,
+          desafio4Sar: true,
+          desafio4Prioridad: true
+        });
+        setFocus({
+          lat: BOLIVIA_CENTER[0],
+          lng: BOLIVIA_CENTER[1],
+          zoom: BOLIVIA_ZOOM,
+          key: `demo-nac-oro42-${Date.now()}`
+        });
+      } else if (scene === 'piloto-3d') {
         setSwipeOpen(false);
         setDecisionOpen(false);
         setTourStep(null);
@@ -148,11 +206,8 @@ export const MapaPage: React.FC = () => {
         setPin(null);
         setPanelOpen(false);
         setViewMode('3d');
-        const cleared = Object.fromEntries(
-          (Object.keys(DEFAULT_LAYERS) as MapLayerKey[]).map((k) => [k, false])
-        ) as LayerVisibility;
         setLayers({
-          ...cleared,
+          ...allOff(),
           departments: true,
           pilotoS2_2026: true,
           pilotoNdti: true,
@@ -171,6 +226,7 @@ export const MapaPage: React.FC = () => {
         setSwipeOpen(false);
         setDecisionOpen(false);
         setTourStep(null);
+        setSelected(null);
       }
     };
 
