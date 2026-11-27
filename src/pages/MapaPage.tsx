@@ -1,9 +1,10 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { Box, Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Search, X } from 'lucide-react';
+import { Box, Compass, Crosshair, Download, ExternalLink, Filter, Layers, MapPin, Play, Search, X } from 'lucide-react';
 import type { AdminStatus, MiningType, VerificationState } from '../types/domain';
 import { useData } from '../app/data';
 import { navigate, useRoute } from '../app/router';
 import { DEFAULT_LAYERS, GeoMap, MapLegend, type LayerVisibility, type MapLayerKey, type MapSelection } from '../components/GeoMap';
+import { GuidedTourORO42, TOUR_STEPS } from '../components/GuidedTourORO42';
 import { StatusBadge, VerificationBadge } from '../components/records';
 import { Badge, Button, DemoBadge, DL, Input, Select, cx } from '../components/ui';
 import { BOLIVIA_CENTER, BOLIVIA_ZOOM, DEPARTMENTS } from '../data/boliviaGeo';
@@ -106,6 +107,7 @@ export const MapaPage: React.FC = () => {
   });
   const [panelOpen, setPanelOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const [tourStep, setTourStep] = useState<number | null>(null);
 
   const dept = DEPARTMENTS.find((d) => d.name === department);
   const provinces = dept ? Array.from(new Set(dept.municipalities.map((m) => m.province))) : [];
@@ -165,6 +167,18 @@ export const MapaPage: React.FC = () => {
     if (r.sel.id) setSelected(r.sel);
   };
 
+  const applyTourStep = (idx: number) => {
+    const step = TOUR_STEPS[idx];
+    if (!step) return;
+    setTourStep(idx);
+    setSelected(null);
+    setPin(null);
+    setPanelOpen(false);
+    setLayers(step.layers);
+    setViewMode(step.viewMode);
+    setFocus({ ...step.focus, key: `tour-${idx}-${Date.now()}` });
+  };
+
   const goToPiloto = () => {
     setLayers((prev) => {
       const anyPilotoOn = PILOTO_KEYS.some((k) => prev[k]);
@@ -185,6 +199,8 @@ export const MapaPage: React.FC = () => {
     setDateTo('');
     setPin(null);
     setSelected(null);
+    setTourStep(null);
+    setLayers(DEFAULT_LAYERS);
     setFocus({ lat: BOLIVIA_CENTER[0], lng: BOLIVIA_CENTER[1], zoom: BOLIVIA_ZOOM, key: `reset-${Date.now()}` });
   };
 
@@ -428,6 +444,7 @@ export const MapaPage: React.FC = () => {
               </div>
             )}
           </div>
+
           <div className="absolute bottom-6 left-3 z-[900] flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" className="shadow-pop lg:hidden" icon={<Filter className="w-3.5 h-3.5" />} onClick={() => setPanelOpen(true)}>
               Filtros y capas
@@ -447,7 +464,24 @@ export const MapaPage: React.FC = () => {
             >
               {viewMode === '2d' ? 'Vista 3D' : 'Volver a 2D'}
             </Button>
+            <Button
+              size="sm"
+              variant={tourStep !== null ? 'primary' : 'secondary'}
+              className="shadow-pop"
+              icon={<Play className="w-3.5 h-3.5" />}
+              onClick={() => (tourStep !== null ? setTourStep(null) : applyTourStep(0))}
+            >
+              {tourStep !== null ? 'Cerrar tour' : 'Tour ORO-4.2 (4 pasos)'}
+            </Button>
           </div>
+
+          {tourStep !== null && (
+            <GuidedTourORO42
+              stepIndex={tourStep}
+              onStepChange={applyTourStep}
+              onClose={() => setTourStep(null)}
+            />
+          )}
 
           {selected && <FeatureCard sel={selected} onClose={() => setSelected(null)} />}
         </div>
