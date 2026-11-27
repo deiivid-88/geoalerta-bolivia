@@ -5,6 +5,7 @@ import { useData } from '../app/data';
 import { navigate, useRoute } from '../app/router';
 import { DEFAULT_LAYERS, GeoMap, MapLegend, type LayerVisibility, type MapLayerKey, type MapSelection } from '../components/GeoMap';
 import { GuidedTourORO42, TOUR_STEPS } from '../components/GuidedTourORO42';
+import { DEMO_MAP_EVENT, getDemoMapScene, type DemoMapScene } from '../components/Demo60sController';
 import { Oro42DecisionModal } from '../components/Oro42DecisionModal';
 import { PilotoSwipeModal } from '../components/PilotoSwipeModal';
 import { StatusBadge, VerificationBadge } from '../components/records';
@@ -134,6 +135,50 @@ export const MapaPage: React.FC = () => {
     if (p) setFocus({ ...p, zoom: 11, key: `${selected.kind}:${selected.id}` });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [miningRecords.length, reports.length, satellites.length]);
+
+// Sincronizar escenas automáticas del botón global Demo 60s
+  useEffect(() => {
+    const applyScene = (scene: DemoMapScene | null) => {
+      if (!scene) return;
+      if (scene === 'piloto-3d') {
+        setSwipeOpen(false);
+        setDecisionOpen(false);
+        setTourStep(null);
+        setSelected(null);
+        setPin(null);
+        setPanelOpen(false);
+        setViewMode('3d');
+        const cleared = Object.fromEntries(
+          (Object.keys(DEFAULT_LAYERS) as MapLayerKey[]).map((k) => [k, false])
+        ) as LayerVisibility;
+        setLayers({
+          ...cleared,
+          departments: true,
+          pilotoS2_2026: true,
+          pilotoNdti: true,
+          pilotoTop15: true
+        });
+        setFocus({ lat: -15.47, lng: -67.8, zoom: 12.2, key: `demo3d-${Date.now()}` });
+      } else if (scene === 'swipe') {
+        setDecisionOpen(false);
+        setTourStep(null);
+        setSwipeOpen(true);
+      } else if (scene === 'decision') {
+        setSwipeOpen(false);
+        setTourStep(null);
+        setDecisionOpen(true);
+      } else if (scene === 'clear') {
+        setSwipeOpen(false);
+        setDecisionOpen(false);
+        setTourStep(null);
+      }
+    };
+
+    applyScene(getDemoMapScene());
+    const handler = (e: Event) => applyScene((e as CustomEvent<DemoMapScene | null>).detail);
+    window.addEventListener(DEMO_MAP_EVENT, handler);
+    return () => window.removeEventListener(DEMO_MAP_EVENT, handler);
+  }, []);
 
   function locate(sel: MapSelection): { lat: number; lng: number } | undefined {
     const list = { record: miningRecords, report: reports, satellite: satellites, alert: alerts, sourceDoc: sourceDocuments }[sel.kind] as { id: string; lat: number; lng: number }[];
