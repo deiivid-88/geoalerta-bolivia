@@ -9,9 +9,11 @@ import {
   Megaphone,
   Menu,
   Mountain,
+  Play,
   Satellite,
   Settings,
   Siren,
+  Square,
   X
 } from 'lucide-react';
 import { useSession } from '../app/session';
@@ -20,6 +22,7 @@ import type { Permission } from '../domain/permissions';
 import { ROLE } from '../domain/catalogs';
 import { DATA_MODE } from '../services';
 import { BrandLogo } from './BrandLogo';
+import { Demo60sController } from './Demo60sController';
 import { cx } from './ui';
 
 export interface NavItem {
@@ -34,6 +37,7 @@ export const AppShell: React.FC<{ currentPath: string; children: React.ReactNode
   const { session, logout, can } = useSession();
   const { alerts, reports, error } = useData();
   const [drawer, setDrawer] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
   useEffect(() => setDrawer(false), [currentPath]);
 
   const activeAlerts = alerts.filter((a) => a.status === 'activa').length;
@@ -128,12 +132,26 @@ export const AppShell: React.FC<{ currentPath: string; children: React.ReactNode
           </div>
           <div className="hidden lg:block text-xs text-ink-500">Plataforma de inteligencia territorial minera · Bolivia</div>
           <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDemoOpen((v) => !v)}
+              className={cx(
+                'inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded transition-colors shadow-xs',
+                demoOpen
+                  ? 'bg-gold-500 text-navy-950 hover:bg-gold-400'
+                  : 'bg-navy-900 text-white hover:bg-navy-800'
+              )}
+              title="Recorrido guiado de toda la plataforma en 60 segundos"
+            >
+              {demoOpen ? <Square className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
+              <span>{demoOpen ? 'Detener Demo' : 'Demo 60s'}</span>
+            </button>
             {DATA_MODE === 'demo' ? (
-              <span className="text-[11px] font-bold px-2 py-1 rounded border border-dashed border-gold-400 bg-gold-50 text-gold-900" title="Datos demostrativos almacenados en este navegador. Sin conexión a base de datos.">
+              <span className="hidden md:inline-block text-[11px] font-bold px-2 py-1 rounded border border-dashed border-gold-400 bg-gold-50 text-gold-900" title="Datos demostrativos almacenados en este navegador. Sin conexión a base de datos.">
                 MODO DEMOSTRATIVO
               </span>
             ) : (
-              <span className="text-[11px] font-bold px-2 py-1 rounded border border-teal-300 bg-teal-50 text-teal-800">BASE DE DATOS CENTRAL</span>
+              <span className="hidden md:inline-block text-[11px] font-bold px-2 py-1 rounded border border-teal-300 bg-teal-50 text-teal-800">BASE DE DATOS CENTRAL</span>
             )}
             {activeAlerts > 0 && can('alerts.view') && (
               <a href="#/alertas" className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded bg-coral-600 text-white">
@@ -146,6 +164,8 @@ export const AppShell: React.FC<{ currentPath: string; children: React.ReactNode
       </header>
 
       <main className="px-3 sm:px-5 py-5 max-w-[1600px] mx-auto">{children}</main>
+
+      {demoOpen && <Demo60sController onClose={() => setDemoOpen(false)} />}
     </div>
   );
 };
